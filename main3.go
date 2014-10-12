@@ -13,6 +13,7 @@ import (
 	"github.com/ChimeraCoder/anaconda"
 	"code.google.com/p/goauth2/oauth/jwt"
 	"code.google.com/p/google-api-go-client/storage/v1"
+	"code.google.com/p/google-api-go-client/bigquery/v2"
 )
 
 type data struct {
@@ -43,8 +44,9 @@ const (
 	// Google
 	projectID = "tksyokoyama"
 	BucketName = "chugokudb6sample"
-	clientID = "328006125971-hd91anjatqdv8mhvcvojgmobllte8kn0.apps.googleusercontent.com"
-	emailAddress = "328006125971-hd91anjatqdv8mhvcvojgmobllte8kn0@developer.gserviceaccount.com"
+	FolderName = "twitter"
+	clientID = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae.apps.googleusercontent.com"
+	emailAddress = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae@developer.gserviceaccount.com"
 	fingerPrint = "a366f0cc5805e2e04f79fba752b70cba4769e612"
 
 	scope      = storage.DevstorageFull_controlScope
@@ -61,6 +63,7 @@ const (
 )
 
 /*
+BigQueryに投入するときのSchemaのフォーマット。
  [
  	{
  	 "name": "screenname",
@@ -100,7 +103,7 @@ func main() {
 
 	gToken := jwt.NewToken(emailAddress, scope, gKey)
 
-    _, err = jwt.NewTransport(gToken)
+    transport, err := jwt.NewTransport(gToken)
     if err != nil {
     	log.Fatalln(err)
     }
@@ -153,6 +156,8 @@ func main() {
 	if c.Exist {
 		statusParam.Add("since_id", fmt.Sprintf("%d", c.List_Since_Id))
 	}
+
+	// Listの取得APIに対応していないのでローカルで拡張。（そんなに難しくない）
 	tweet, err = api.GetListStatus(statusParam)
 	if err != nil {
 		log.Fatalln(err)
@@ -174,6 +179,7 @@ func main() {
 	convstr := strings.Replace(string(b), "},", "}\n", -1)
 	log.Println(convstr)
 
+	tweetFileName := "data" + time.Now().Format("20060102150405") + ".txt"
 	err = ioutil.WriteFile("data" + time.Now().Format("20060102150405") + ".txt", []byte(convstr[1:len(convstr)-1]), 0755)
 	if err != nil {
 		log.Fatalln(err)
@@ -188,6 +194,33 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	// Cloud Storageにファイルを保存
+	gcs, err := storage.New(transport.Client())
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// gcsでフォルダを指定したい場合はObjectのNameにパスを記入する。
+	gcsfile := &storage.Object{Name: FolderName + "/" + tweetFileName}
+	f, err := os.Open(tweetFileName)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer f.Close()
+
+	_, err = gcs.Objects.Insert(BucketName, gcsfile).Media(f).Do()
+	if err != nil {
+		log.Fatalf("Insert Failed to GCS. %v", err)
+	}
+
+	// BigQueryに追加
+	_, err = bigquery.New(transport.Client())
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+
 
 }
 
