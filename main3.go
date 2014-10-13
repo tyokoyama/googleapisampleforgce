@@ -31,23 +31,26 @@ type cache struct {
 	List_Since_Id int64 `json:"list_since_id"`
 }
 
+type AuthSetting struct {
+	TwitterConsumerKey string `json:"twitter_consumerkey"`
+	TwitterConsumerSecret string `json:"twitter_consumersecret"`
+	TwitterAccessToken string `json:"twitter_accesstoken"`
+	TwitterAccessTokenSecret string `json:"twitter_accesstokensecret"`
+	GoogleClientId string `json:"google_client_id"`
+	GoogleEmailAddress string `json:"google_email_address"`
+}
+
 const (
+	// 認証関係
+	authFileName = "auth.json"
+
 	// Twitter
-	consumerKey    = "uTcNQaAkSd2bgAjAyrSId5lES"
-	consumerSecret = "wklLdTsTxlpcxATLMYLBo82tBdRXFtiplfzx3PjnST5ageUC2m"
-
-	accessToken       = "16088666-OsHwfNGGVskwFpmajtgVe3Kv5Rp0tBeLj1p2fm4OJ"
-	accessTokenSecret = "anTZqCfiQnES8cQ95nTFrP503wAcWiSo2Ug7h9y6eKhNK"
-
 	cacheFileName = "cache.json"
 
 	// Google
 	projectID    = "tksyokoyama"
 	BucketName   = "chugokudb6sample"
 	FolderName   = "twitter"
-	clientID     = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae.apps.googleusercontent.com"
-	emailAddress = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae@developer.gserviceaccount.com"
-	fingerPrint  = "a366f0cc5805e2e04f79fba752b70cba4769e612"
 
 	scope       = storage.DevstorageFull_controlScope
 	scope_bq    = bigquery.BigqueryScope
@@ -95,6 +98,16 @@ BigQueryに投入するときのSchemaのフォーマット。
 func main() {
 	var output []data
 	var c cache
+	var setting AuthSetting
+
+	bRead, err := ioutil.ReadFile(authFileName)
+	if err != nil {
+		log.Fatalf("Auth File Not Found. %v\n", err)
+	}
+	err = json.Unmarshal(bRead, &setting)
+	if err != nil {
+		log.Fatalf("Auth File Format Error. %v \n", err)
+	}
 
 	// goauth2の認証（Service Account認証）
 	gKey, err := ioutil.ReadFile(googleSecretFileName)
@@ -102,8 +115,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	gToken := jwt.NewToken(emailAddress, scope, gKey)
-	bqToken := jwt.NewToken(emailAddress, scope_bq, gKey)
+	gToken := jwt.NewToken(setting.GoogleEmailAddress, scope, gKey)
+	bqToken := jwt.NewToken(setting.GoogleEmailAddress, scope_bq, gKey)
 
 	transport, err := jwt.NewTransport(gToken)
 	if err != nil {
@@ -117,7 +130,7 @@ func main() {
 
 	c.Exist = false
 	// cacheの読み込み
-	bRead, err := ioutil.ReadFile(cacheFileName)
+	bRead, err = ioutil.ReadFile(cacheFileName)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Fatalln(err)
@@ -131,10 +144,10 @@ func main() {
 		c.Exist = true
 	}
 
-	anaconda.SetConsumerKey(consumerKey)
-	anaconda.SetConsumerSecret(consumerSecret)
+	anaconda.SetConsumerKey(setting.TwitterConsumerKey)
+	anaconda.SetConsumerSecret(setting.TwitterConsumerSecret)
 
-	api := anaconda.NewTwitterApi(accessToken, accessTokenSecret)
+	api := anaconda.NewTwitterApi(setting.TwitterAccessToken, setting.TwitterAccessTokenSecret)
 	defer api.Close()
 
 	// タイムラインを取得
