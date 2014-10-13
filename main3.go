@@ -152,6 +152,7 @@ func main() {
 
 	// タイムラインを取得
 	homeParam := url.Values{}
+	homeParam.Add("count", "200")
 	if c.Exist {
 		homeParam.Add("since_id", fmt.Sprintf("%d", c.Home_Since_Id))
 	}
@@ -173,6 +174,7 @@ func main() {
 	statusParam.Add("include_rts", "1")
 	statusParam.Add("list_id", "59668871")
 	statusParam.Add("slug", "samdbox")
+	statusParam.Add("count", "200")
 	if c.Exist {
 		statusParam.Add("since_id", fmt.Sprintf("%d", c.List_Since_Id))
 	}
