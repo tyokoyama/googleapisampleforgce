@@ -50,6 +50,7 @@ const (
 	fingerPrint = "a366f0cc5805e2e04f79fba752b70cba4769e612"
 
 	scope      = storage.DevstorageFull_controlScope
+	scope_bq   = bigquery.BigqueryScope
 	authURL    = "https://accounts.google.com/o/oauth2/auth"
 	tokenURL   = "https://accounts.google.com/o/oauth2/token"
 	entityName = "allUsers"
@@ -102,8 +103,14 @@ func main() {
 	}
 
 	gToken := jwt.NewToken(emailAddress, scope, gKey)
+	bqToken := jwt.NewToken(emailAddress, scope_bq, gKey)
 
     transport, err := jwt.NewTransport(gToken)
+    if err != nil {
+    	log.Fatalln(err)
+    }
+
+    trasport_bq, err := jwt.NewTransport(bqToken)
     if err != nil {
     	log.Fatalln(err)
     }
@@ -171,6 +178,12 @@ func main() {
 		}
 	}
 
+	// データが無ければ何もしない。
+	if len(output) <= 0 {
+		log.Println("No Tweet.")
+		return
+	}
+
 	// BigQuery用のデータ作成
 	b, err := json.Marshal(output)
 	if err != nil {
@@ -211,17 +224,51 @@ func main() {
 
 	_, err = gcs.Objects.Insert(BucketName, gcsfile).Media(f).Do()
 	if err != nil {
-		log.Fatalf("Insert Failed to GCS. %v", err)
+		log.Fatalf("Insert Failed to GCS. %v\n", err)
 	}
 
 	// BigQueryに追加
-	_, err = bigquery.New(transport.Client())
+	bq, err := bigquery.New(trasport_bq.Client())
 	if err != nil {
 		log.Fatalln(err)
 	}
 
+	var job bigquery.Job
+	job.Configuration = new(bigquery.JobConfiguration)
+	job.Configuration.Load = new(bigquery.JobConfigurationLoad)
+	job.Configuration.Load.Schema = &bigquery.TableSchema{
+									Fields: []*bigquery.TableFieldSchema{
+										&bigquery.TableFieldSchema{Name: "screenname", Type: "string"},
+										&bigquery.TableFieldSchema{Name: "name", Type: "string"},
+										&bigquery.TableFieldSchema{Name: "created_at", Type: "string"},
+										&bigquery.TableFieldSchema{Name: "text", Type: "string"},
+										&bigquery.TableFieldSchema{Name: "favorite", Type: "integer"},
+										&bigquery.TableFieldSchema{Name: "retweet", Type: "integer"},
+									},
+								}
+	job.Configuration.Load.SourceUris = []string{"gs://chugokudb6sample/" + FolderName + "/" + tweetFileName}
+	job.Configuration.Load.DestinationTable = &bigquery.TableReference{DatasetId: BucketName, ProjectId: projectID, TableId: FolderName}
+	job.Configuration.Load.SourceFormat = "NEWLINE_DELIMITED_JSON"
 
+	res, err := bq.Jobs.Insert(projectID, &job).Do()
+	if err != nil {
+		log.Fatalf("Insert Failed to Bigquery. %v\n", err)
+	}
 
+	for res.Status.State != "DONE" {
+		log.Println(res.Status)
+		res, err = bq.Jobs.Get(res.JobReference.ProjectId, res.JobReference.JobId).Do()
+		if err != nil {
+			log.Printf("Job Status Update Error %v\n", err)
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	log.Println(res.Status.ErrorResult)
+
+	for _, detail := range res.Status.Errors {
+		log.Println(detail)
+	}
 }
 
 func tweetToData(t anaconda.Tweet) (d data) {
