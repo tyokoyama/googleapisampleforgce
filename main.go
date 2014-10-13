@@ -10,20 +10,20 @@ import (
 )
 
 const (
-	consumerKey = "uTcNQaAkSd2bgAjAyrSId5lES"
+	consumerKey    = "uTcNQaAkSd2bgAjAyrSId5lES"
 	consumerSecret = "wklLdTsTxlpcxATLMYLBo82tBdRXFtiplfzx3PjnST5ageUC2m"
 )
 
 func main() {
 	c := oauth.NewConsumer(
-			consumerKey,
-			consumerSecret,
-			oauth.ServiceProvider {
-				RequestTokenUrl: "https://api.twitter.com/oauth/request_token",
-				AuthorizeTokenUrl: "https://api.twitter.com/oauth/authorize",
-				AccessTokenUrl: "https://api.twitter.com/oauth/access_token",
-			},
-		)
+		consumerKey,
+		consumerSecret,
+		oauth.ServiceProvider{
+			RequestTokenUrl:   "https://api.twitter.com/oauth/request_token",
+			AuthorizeTokenUrl: "https://api.twitter.com/oauth/authorize",
+			AccessTokenUrl:    "https://api.twitter.com/oauth/access_token",
+		},
+	)
 
 	requestToken, url, err := c.GetRequestTokenAndUrl("oob")
 	if err != nil {

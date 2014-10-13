@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"log"
+	"net/http"
 
 	// "github.com/garyburd/go-oauth/oauth"
 	"github.com/ymotongpoo/go-twitter/twitter"

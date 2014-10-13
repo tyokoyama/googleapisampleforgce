@@ -10,57 +10,57 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ChimeraCoder/anaconda"
 	"code.google.com/p/goauth2/oauth/jwt"
-	"code.google.com/p/google-api-go-client/storage/v1"
 	"code.google.com/p/google-api-go-client/bigquery/v2"
+	"code.google.com/p/google-api-go-client/storage/v1"
+	"github.com/ChimeraCoder/anaconda"
 )
 
 type data struct {
 	ScreenName string `json:"screenname"`
-	Name string `json:"name"`
-	CreatedAt string  `json:"created_at"`
-	Text string `json:"text"`
-	Favorite int64 `json:"favorite"`
-	Retweet int64 `json:"retweet"`
+	Name       string `json:"name"`
+	CreatedAt  string `json:"created_at"`
+	Text       string `json:"text"`
+	Favorite   int64  `json:"favorite"`
+	Retweet    int64  `json:"retweet"`
 }
 
 type cache struct {
-	Exist bool			`json:"-"`
+	Exist         bool  `json:"-"`
 	Home_Since_Id int64 `json:"home_since_id"`
 	List_Since_Id int64 `json:"list_since_id"`
 }
 
 const (
 	// Twitter
-	consumerKey = "uTcNQaAkSd2bgAjAyrSId5lES"
+	consumerKey    = "uTcNQaAkSd2bgAjAyrSId5lES"
 	consumerSecret = "wklLdTsTxlpcxATLMYLBo82tBdRXFtiplfzx3PjnST5ageUC2m"
 
-	accessToken = "16088666-OsHwfNGGVskwFpmajtgVe3Kv5Rp0tBeLj1p2fm4OJ"
+	accessToken       = "16088666-OsHwfNGGVskwFpmajtgVe3Kv5Rp0tBeLj1p2fm4OJ"
 	accessTokenSecret = "anTZqCfiQnES8cQ95nTFrP503wAcWiSo2Ug7h9y6eKhNK"
 
 	cacheFileName = "cache.json"
 
 	// Google
-	projectID = "tksyokoyama"
-	BucketName = "chugokudb6sample"
-	FolderName = "twitter"
-	clientID = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae.apps.googleusercontent.com"
+	projectID    = "tksyokoyama"
+	BucketName   = "chugokudb6sample"
+	FolderName   = "twitter"
+	clientID     = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae.apps.googleusercontent.com"
 	emailAddress = "328006125971-2h1ni3u1e0pobb7pqk2pqccq44dr7dae@developer.gserviceaccount.com"
-	fingerPrint = "a366f0cc5805e2e04f79fba752b70cba4769e612"
+	fingerPrint  = "a366f0cc5805e2e04f79fba752b70cba4769e612"
 
-	scope      = storage.DevstorageFull_controlScope
-	scope_bq   = bigquery.BigqueryScope
-	authURL    = "https://accounts.google.com/o/oauth2/auth"
-	tokenURL   = "https://accounts.google.com/o/oauth2/token"
-	entityName = "allUsers"
+	scope       = storage.DevstorageFull_controlScope
+	scope_bq    = bigquery.BigqueryScope
+	authURL     = "https://accounts.google.com/o/oauth2/auth"
+	tokenURL    = "https://accounts.google.com/o/oauth2/token"
+	entityName  = "allUsers"
 	redirectURL = "urn:ietf:wg:oauth:2.0:oob"
 
 	// pemファイルを作る時は、Developers ConsoleでService AccountのKeyを作り、
 	// p12ファイルをダウンロードした後、コマンドを実行。（opensslのパスワードはp12ファイルのダウンロード時に表示される）
 	// openssl pkcs12 -in tksyokoyama-a366f0cc5805.p12 -nocerts -out key.pem -nodes
 	googleSecretFileName = "key.pem"
-	googleCacheFileName = "gcache.json"
+	googleCacheFileName  = "gcache.json"
 )
 
 /*
@@ -91,7 +91,7 @@ BigQueryに投入するときのSchemaのフォーマット。
  	 "type": "integer"
  	 }
  ]
- */
+*/
 func main() {
 	var output []data
 	var c cache
@@ -105,15 +105,15 @@ func main() {
 	gToken := jwt.NewToken(emailAddress, scope, gKey)
 	bqToken := jwt.NewToken(emailAddress, scope_bq, gKey)
 
-    transport, err := jwt.NewTransport(gToken)
-    if err != nil {
-    	log.Fatalln(err)
-    }
+	transport, err := jwt.NewTransport(gToken)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-    trasport_bq, err := jwt.NewTransport(bqToken)
-    if err != nil {
-    	log.Fatalln(err)
-    }
+	trasport_bq, err := jwt.NewTransport(bqToken)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	c.Exist = false
 	// cacheの読み込み
@@ -193,7 +193,7 @@ func main() {
 	log.Println(convstr)
 
 	tweetFileName := "data" + time.Now().Format("20060102150405") + ".txt"
-	err = ioutil.WriteFile("data" + time.Now().Format("20060102150405") + ".txt", []byte(convstr[1:len(convstr)-1]), 0755)
+	err = ioutil.WriteFile("data"+time.Now().Format("20060102150405")+".txt", []byte(convstr[1:len(convstr)-1]), 0755)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -237,15 +237,15 @@ func main() {
 	job.Configuration = new(bigquery.JobConfiguration)
 	job.Configuration.Load = new(bigquery.JobConfigurationLoad)
 	job.Configuration.Load.Schema = &bigquery.TableSchema{
-									Fields: []*bigquery.TableFieldSchema{
-										&bigquery.TableFieldSchema{Name: "screenname", Type: "string"},
-										&bigquery.TableFieldSchema{Name: "name", Type: "string"},
-										&bigquery.TableFieldSchema{Name: "created_at", Type: "string"},
-										&bigquery.TableFieldSchema{Name: "text", Type: "string"},
-										&bigquery.TableFieldSchema{Name: "favorite", Type: "integer"},
-										&bigquery.TableFieldSchema{Name: "retweet", Type: "integer"},
-									},
-								}
+		Fields: []*bigquery.TableFieldSchema{
+			&bigquery.TableFieldSchema{Name: "screenname", Type: "string"},
+			&bigquery.TableFieldSchema{Name: "name", Type: "string"},
+			&bigquery.TableFieldSchema{Name: "created_at", Type: "string"},
+			&bigquery.TableFieldSchema{Name: "text", Type: "string"},
+			&bigquery.TableFieldSchema{Name: "favorite", Type: "integer"},
+			&bigquery.TableFieldSchema{Name: "retweet", Type: "integer"},
+		},
+	}
 	job.Configuration.Load.SourceUris = []string{"gs://chugokudb6sample/" + FolderName + "/" + tweetFileName}
 	job.Configuration.Load.DestinationTable = &bigquery.TableReference{DatasetId: BucketName, ProjectId: projectID, TableId: FolderName}
 	job.Configuration.Load.SourceFormat = "NEWLINE_DELIMITED_JSON"
@@ -269,6 +269,11 @@ func main() {
 	for _, detail := range res.Status.Errors {
 		log.Println(detail)
 	}
+
+	err = os.Remove(tweetFileName)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func tweetToData(t anaconda.Tweet) (d data) {
@@ -282,7 +287,7 @@ func tweetToData(t anaconda.Tweet) (d data) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	ti = ti.Add(9 * time.Hour)			// 標準時のようなので9時間足しておく。
+	ti = ti.Add(9 * time.Hour) // 標準時のようなので9時間足しておく。
 	d.CreatedAt = ti.Format("2006/01/02 15:04:05.000")
 
 	return
